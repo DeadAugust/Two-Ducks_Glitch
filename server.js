@@ -28,35 +28,57 @@ ducks.on('connection', function (socket) {
   
   socket.on('joined', function(data){
     socket.name = data.name; //need?
+    socket.lean = data.lean;
     joinRoom(socket);
-    let room = socket.room;
-    let name = socket.name;
-    if (rooms[room]) {
-      socket.to(room).emit('joined', name); 
-    }
+    // let room = socket.room;
+    // let name = socket.name;
+    // if (rooms[room]) {
+    //   socket.to(room).emit('joined', name); 
+    // }
+    
+    //send partner event message
     console.log(rooms);
   });
 
   
   // Listen for data messages
   socket.on('data', function (data) {
-    // Data comes in as whatever was sent, including objects
-    //console.log("Received: 'message' " + data);
     let room = socket.room;
-    // let names = [];
-    if (rooms[room]) {
-      // names = room.names;
+    let name = data.name;
+    // if (rooms[room][name]) {
+      // let ourLean = 0;
+      // console.log(rooms[room]['ducks']);
+    // if (rooms[room][name]) {
+    //   console.log('test');
+    //   rooms[room][name] = data.lean;
+    // }
+    rooms[room]['ducks'][name] = data.lean; //updating individual value
+    
+      // for (let duck in rooms[room]['ducks']){
+        // console.log(duck);
+        // if (data.name == duck['name']){
+        //   duck['lean'] = data.lean;
+        // }
+        // ourLean += duck['lean'];
+      // }      
+    // console.log(rooms[room][name]);
+    let ourLean = 0;
+    for (let duck in rooms[room]['ducks']){
+      ourLean += rooms[room]['ducks'][duck]; //so not strings but values...
+    }
+    // let ourLean = rooms[room][name];
       // Wrap up data in message
-      let message = {
-        id : socket.id,
-        data : data,
-        lean: data.lean
-        // names: names
+      let leanMsg = {
+        // id : socket.id,
+        // data : data,
+        lean: ourLean
       }
       console.log(data.lean);
-      // Send data to all clients
-      ducks.to(room).emit('message', message);
-    }
+      console.log(leanMsg.lean);
+      
+      // Send lean update to ducks in that room
+      ducks.to(room).emit('lean update', leanMsg);
+    // }
   });
 
   // Listen for this player to disconnect
@@ -65,19 +87,19 @@ ducks.on('connection', function (socket) {
     console.log("Duck has flown away: " + socket.id);
     ducks.emit('disconnected', socket.id);
     // outputs.emit('disconnected', socket.id);
-    let room = socket.room;
+    // let room = socket.room;
     //lets the other person in the room know they left
-    let name = socket.name;
-    if (rooms[room]) {
-      socket.to(room).emit('leave room', name); 
-    }
+    // let name = socket.name;
+    // if (rooms[room]) {
+    //   socket.to(room).emit('leave room', name); 
+    // }
   });
 });
 
 // Shared screen with leaderboard stats
 var screen = io.of('/screen');
-// Listen for the leaderboards to connect
-screen.on('connection', function (socket) {
+  // Listen for the leaderboards to connect
+  screen.on('connection', function (socket) {
   console.log('Leaderboard connected: ' + socket.id);
 
   // Listen for this output client to disconnect
@@ -109,10 +131,40 @@ function joinRoom(socket) {
 //so this is the actual function that adds the socket to the room
 function addSocketToRoom(socket, r) {
   socket.join(r);
-  //this is an arbitrary toggle, just to "open the room" ironically (i think?)
-  //does this actually do anything in this sketch? because it doesn't matter if room is "private" since it'll only join...
-  // unless this has something to do with the adapter.rooms (like maybe there are more rooms than is good? like everyone would start on own room and get stuck there)
   rooms[r].isPrivate = true;
-  // rooms[r].names.push(socket.name); //can't assign?
   socket.room = r;
+  let duckName = socket.name;
+  //console.log(Object.keys(rooms[r])); //wtf, how is Room {} the value of r?
+  // rooms[r].ducks += {name: duckName, lean: 0}; //+=????
+  // rooms[r]['ducks'] += {name: duckName, lean: 0}; //+=????
+  if (rooms[r]['ducks'] == undefined){
+    console.log('thisisisis');
+    // Object.defineProperty(rooms[r], 'ducks', {
+    //   zero: 0 //so doesn't matter if counts as a duck in ourLean
+    // });
+    rooms[r]['ducks'] = {zero: 0};
+    // console.log(rooms[r]);
+  }
+  rooms[r]['ducks'][duckName] = socket.lean; //to store lean
+  // console.log(rooms[r]); //oohhhhh so .ducks is assigning, 'ducks' is listing??
+  /* hmm....
+  if (rooms[r].ducks != undefined){ 
+    let slots = Object.keys(rooms[r]['ducks']);
+    let slotNum = 0;
+    for (let slot in slots) {
+      if (slotNum == slot) {
+        slotNum++;
+      }
+    }
+    Object.defineProperty(rooms[r]['ducks'], slotNum, {
+      name: duckName, 
+      lean: 0
+    });
+    console.log('next? \n'+ rooms[r].ducks);
+  }
+  else {
+    rooms[r].ducks = {0: {name: duckName, lean: 0}};
+    console.log('first?\n '+ rooms[r].ducks);
+  }
+  */
 }
