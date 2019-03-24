@@ -20,6 +20,18 @@ let roomNum = 0;
 //number of users that are in each game
 let numPartners = 2;
 
+// Shared screen with leaderboard stats
+var screen = io.of('/screen');
+  // Listen for the leaderboards to connect
+  screen.on('connection', function (socket) {
+  console.log('Leaderboard connected: ' + socket.id);
+
+  // Listen for this output client to disconnect
+  socket.on('disconnect', function () {
+    console.log("Leaderboard has disconnected " + socket.id);
+  });
+});
+
 // Default connection for players, just plain url, no namespace
 let ducks = io.of('/');
 // Listen for players to connect
@@ -73,11 +85,13 @@ ducks.on('connection', function (socket) {
         // data : data,
         lean: ourLean
       }
-      console.log(data.lean);
-      console.log(leanMsg.lean);
+      // console.log(data.lean);
+      // console.log(leanMsg.lean);
       
       // Send lean update to ducks in that room
       ducks.to(room).emit('lean update', leanMsg);
+      //send lean to screen
+      screen.emit('lean combo', leanMsg);
     // }
   });
 
@@ -93,18 +107,6 @@ ducks.on('connection', function (socket) {
     // if (rooms[room]) {
     //   socket.to(room).emit('leave room', name); 
     // }
-  });
-});
-
-// Shared screen with leaderboard stats
-var screen = io.of('/screen');
-  // Listen for the leaderboards to connect
-  screen.on('connection', function (socket) {
-  console.log('Leaderboard connected: ' + socket.id);
-
-  // Listen for this output client to disconnect
-  socket.on('disconnect', function () {
-    console.log("Leaderboard has disconnected " + socket.id);
   });
 });
 
@@ -138,7 +140,7 @@ function addSocketToRoom(socket, r) {
   // rooms[r].ducks += {name: duckName, lean: 0}; //+=????
   // rooms[r]['ducks'] += {name: duckName, lean: 0}; //+=????
   if (rooms[r]['ducks'] == undefined){
-    console.log('thisisisis');
+    // console.log('thisisisis');
     // Object.defineProperty(rooms[r], 'ducks', {
     //   zero: 0 //so doesn't matter if counts as a duck in ourLean
     // });
