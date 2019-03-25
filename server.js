@@ -88,6 +88,33 @@ ducks.on('connection', function (socket) {
     //send lean to screen
   // }
   });
+  
+  socket.on('cakes', function (cakeData) {
+    let room = socket.room;
+    let name = cakeData.name;
+    rooms[room]['ducks'][name] = cakeData.cakeX; //updating individual value
+    // rooms[room]['ducks'][name] = cakeData.cakeY; //updating individual value
+    // rooms[room]['ducks'][name] = cakeData.cakeSpeed; //updating individual value
+    // rooms[room]['ducks'][name] = cakeData.cakeHit; //updating individual value
+    let cakeX = cakeX;
+    // let cakeY = cakeY;
+    for (let duck in rooms[room]['ducks']){
+      cakeX += rooms[room]['ducks'][duck]; //so not strings but values...
+      // cakeY += rooms[room]['ducks'][duck]; //so not strings but values...
+    }
+    // Wrap up data in message
+    let cakeMsg = {
+      newCakeX: cakeX,
+      // newCakeY: cakeY
+    }
+    console.log(cakeData.cakeX);
+    // console.log(leanMsg.lean);
+
+    // Send cake update to ducks in that room
+    ducks.to(room).emit('cake update', cakeMsg);
+    //send lean to screen
+  // }
+  });
 
   //when they lose
   socket.on('end game', function(count){
@@ -96,9 +123,9 @@ ducks.on('connection', function (socket) {
     let nameArray = Object.keys(rooms[room]['ducks']); //need to make string...
     console.log(nameArray);
     let duckNames ="";
-    for (var name in nameArray){
-      if (name != 'zero'){
-        duckNames += (nameArray[name] + " "); //if error can split up onto separate lines
+    for (let i = 0; i < nameArray.length; i++){
+      if (nameArray[i] != 'zero'){
+        duckNames += (nameArray[i] + " "); //if error can split up onto separate lines
       }
     }
     console.log(duckNames);

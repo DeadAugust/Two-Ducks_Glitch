@@ -4,6 +4,14 @@ Rachel Lim and August Luhrs <br>
 for Collective Play <br>
 ITP Spring 2019 -- Mimi Yin <br>
 
+
+## ===============
+## Class Guide 3/25
+
+
+
+
+
 ===============
 Notes 3/21
 

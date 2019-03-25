@@ -148,6 +148,25 @@ function setup() {
     ourLean = leanMsg.lean;
   });
   
+  //listen for initial updates 
+  socket.on('cake update', function (cakeMsg) {
+    for (i=0; i<tests.number; i++) {
+      tests.x[i] = cakeMsg.newCakeX;
+      console.log(tests.x[i]);
+    // tests.y[i] = cakeY;
+    // tests.speed[i] = cakeSpeed;
+    // cakeHit = tests.hitByDucks[i]
+    }
+  });
+  
+  // socket.on('poops', function (data) {
+  //   poops.x[i] = poopX;
+  //   poops.y[i] = poopY;
+  //   poops.speed[i] = poopSpeed;
+  //   poopHit = poops.hitByDucks[i]
+  // });
+  
+  
   //when the partner leaves
   // socket.on('leave room', function (name) { //need this?
     //need this on server instead, removing from rooms object, not local array
@@ -319,16 +338,30 @@ function initialCake() {
     tests.speed[i] = random(0.50,1); //speed of cakes
     tests.hitByDucks[i] = false; //not yet hit by thing
     drawCake(tests.x[i],tests.y[i],tests.speed[i]); //drawing the shapes
+    let cakeData = {
+      cakeX: tests.x[i],
+      cakeY: tests.y[i],
+      cakeSpeed: tests.speed[i],
+      cakeHit: tests.hitByDucks[i]
+    }
+  socket.emit('cake', cakeData);
   }
 }
 
 function initialPoop() {
   for (i=0; i<poops.number; i++) {
     poops.x[i] = random(-50, width); //random starting x
-    poops.y[i] = random(-50,height-100); //random starting y 
+    poops.y[i] = random(-50,height-400); //random starting y 
     poops.speed[i] = random(0.50,1); //speed of cakes
     poops.hitByDucks[i] = false; //not yet hit by thing
     drawPoop(poops.x[i],poops.y[i],poops.speed[i]); //drawing the shapes
+  //   let poopData = {
+  //     poopX: poops.x[i],
+  //     poopY: poops.y[i],
+  //     poopSpeed: poops.speed[i],
+  //     poopHit: poops.hitByDucks[i]
+  //   }
+  // socket.emit('poops', poopData);
   }
 }
 
@@ -337,7 +370,7 @@ function comingPoop() {
     if(poops.hitByDucks[i] === false) {
       poops.y[i] += poops.speed[i];
       if (poops.y[i] > height) {
-        poops.y[i] = random(-150,300);
+        poops.y[i] = random(-150,100);
       }
       if (poops.y[i] < -150) {
         poops.y[i] = -150;
@@ -401,7 +434,6 @@ function poopCaught() {
 }
 
 function endGame() {
-  socket.emit('end game', count);
   background(195, 247, 238);
   startGame = false;
   stroke(0);
@@ -422,6 +454,7 @@ function endGame() {
   //   tests.x.splice(i,1);
   //   tests.y.splice(i,1);
   // }
+  // socket.emit('end game', count);
 }
 
 function cakeCount() {
