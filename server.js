@@ -16,9 +16,16 @@ let io = require('socket.io').listen(server);
 // not sure what adapter is, since we're not using redis?
 // but I get that this is supposed to be a running list of all rooms
 let rooms = io.sockets.adapter.rooms;
-let roomNum = 0;
+// rooms[0].ducks = {'zero': 0};
+let roomNum = 0; //gonna try having an empty 0 room
 //number of users that are in each game
 let numPartners = 2;
+
+//for scores
+let duckRanks = [];
+
+//initialize with an empty room to try and get the server crash bug solved
+// rooms = {0: 0};
 
 // Shared screen with leaderboard stats
 var screen = io.of('/screen');
@@ -42,14 +49,21 @@ ducks.on('connection', function (socket) {
     socket.name = data.name; //need?
     socket.lean = data.lean;
     joinRoom(socket);
-    // let room = socket.room;
-    // let name = socket.name;
-    // if (rooms[room]) {
-    //   socket.to(room).emit('joined', name); 
-    // }
-    
+    let players = Object.keys(rooms[socket.room]['ducks']);
+    // console.log(players);
+    let partners = {
+      names: players
+    }
     //send partner event message
+    ducks.to(socket.room).emit('partner', partners);
+    
     console.log(rooms);
+  });
+  
+  socket.on('ready', function(){
+    //originally wanted to highlight player name to show one was ready, but for now, if one presses, will trigger start
+    // socket.to(socket.room).emit('ready');
+    socket.to(socket.room).emit('start game'); //not sending to both players?
   });
 
   
@@ -57,56 +71,72 @@ ducks.on('connection', function (socket) {
   socket.on('data', function (data) {
     let room = socket.room;
     let name = data.name;
-    // if (rooms[room][name]) {
-      // let ourLean = 0;
-      // console.log(rooms[room]['ducks']);
-    // if (rooms[room][name]) {
-    //   console.log('test');
-    //   rooms[room][name] = data.lean;
-    // }
     rooms[room]['ducks'][name] = data.lean; //updating individual value
-    
-      // for (let duck in rooms[room]['ducks']){
-        // console.log(duck);
-        // if (data.name == duck['name']){
-        //   duck['lean'] = data.lean;
-        // }
-        // ourLean += duck['lean'];
-      // }      
-    // console.log(rooms[room][name]);
     let ourLean = 0;
     for (let duck in rooms[room]['ducks']){
       ourLean += rooms[room]['ducks'][duck]; //so not strings but values...
     }
-    // let ourLean = rooms[room][name];
-      // Wrap up data in message
-      let leanMsg = {
-        // id : socket.id,
-        // data : data,
-        lean: ourLean
-      }
-      // console.log(data.lean);
-      // console.log(leanMsg.lean);
-      
-      // Send lean update to ducks in that room
-      ducks.to(room).emit('lean update', leanMsg);
-      //send lean to screen
-      screen.emit('lean combo', leanMsg);
-    // }
+    // Wrap up data in message
+    let leanMsg = {
+      lean: ourLean
+    }
+    // console.log(data.lean);
+    // console.log(leanMsg.lean);
+
+    // Send lean update to ducks in that room
+    ducks.to(room).emit('lean update', leanMsg);
+    //send lean to screen
+  // }
   });
 
+  //when they lose
+  socket.on('end game', function(count){
+    console.log('new score');
+    let room = socket.room;
+    let nameArray = Object.keys(rooms[room]['ducks']); //need to make string...
+    console.log(nameArray);
+    let duckNames ="";
+    for (var name in nameArray){
+      if (name != 'zero'){
+        duckNames += (nameArray[name] + " "); //if error can split up onto separate lines
+      }
+    }
+    console.log(duckNames);
+    let final = {
+      duckNames: duckNames,
+      points: count //from event**
+    }
+    let repeat = false;
+    for (let i = duckRanks.length - 1; i >= 0; i--){ //because there's going to be a duplicate msg every time, no?
+      if (duckRanks[i] == final){
+        repeat = true;
+      }
+    }
+    if (!repeat){
+      duckRanks.push(final);
+      duckRanks.sort(function (a, b) {
+        return b.points - a.points;
+      });
+      screen.emit('new score', duckRanks); //right?
+    }    
+  });
+  
+  
   // Listen for this player to disconnect
   // Tell all players this player disconnected
   socket.on('disconnect', function () {
     console.log("Duck has flown away: " + socket.id);
-    ducks.emit('disconnected', socket.id);
-    // outputs.emit('disconnected', socket.id);
-    // let room = socket.room;
-    //lets the other person in the room know they left
-    // let name = socket.name;
-    // if (rooms[room]) {
-    //   socket.to(room).emit('leave room', name); 
-    // }
+    //to remove the name from the room
+    let name = socket.name;
+    let room = socket.room;
+    // console.log(rooms);
+    // console.log(socket.room);
+    // console.log(room);
+    // console.log(rooms[socket.room]);
+    // console.log(rooms[room]);
+  // *****weirdest thing, if then only duck leaves, the rooms object disappears.... ******
+    // delete rooms[room]['ducks'][name];
+    
   });
 });
 
@@ -137,36 +167,10 @@ function addSocketToRoom(socket, r) {
   socket.room = r;
   let duckName = socket.name;
   //console.log(Object.keys(rooms[r])); //wtf, how is Room {} the value of r?
-  // rooms[r].ducks += {name: duckName, lean: 0}; //+=????
-  // rooms[r]['ducks'] += {name: duckName, lean: 0}; //+=????
   if (rooms[r]['ducks'] == undefined){
-    // console.log('thisisisis');
-    // Object.defineProperty(rooms[r], 'ducks', {
-    //   zero: 0 //so doesn't matter if counts as a duck in ourLean
-    // });
-    rooms[r]['ducks'] = {zero: 0};
-    // console.log(rooms[r]);
+    rooms[r]['ducks'] = {'zero': 0};
   }
   rooms[r]['ducks'][duckName] = socket.lean; //to store lean
-  // console.log(rooms[r]); //oohhhhh so .ducks is assigning, 'ducks' is listing??
-  /* hmm....
-  if (rooms[r].ducks != undefined){ 
-    let slots = Object.keys(rooms[r]['ducks']);
-    let slotNum = 0;
-    for (let slot in slots) {
-      if (slotNum == slot) {
-        slotNum++;
-      }
-    }
-    Object.defineProperty(rooms[r]['ducks'], slotNum, {
-      name: duckName, 
-      lean: 0
-    });
-    console.log('next? \n'+ rooms[r].ducks);
-  }
-  else {
-    rooms[r].ducks = {0: {name: duckName, lean: 0}};
-    console.log('first?\n '+ rooms[r].ducks);
-  }
-  */
+  // rooms[r]['ducks'] = {duckName: socket.lean}; //why doesn't this work?
+  
 }
